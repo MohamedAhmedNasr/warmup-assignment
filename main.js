@@ -1,5 +1,28 @@
 const fs = require("fs");
+function toSec(timeStr) {
+    let parts = timeStr.trim().split(' ');
+    let hms = parts[0].split(':');
+    let h = parseInt(hms[0], 10);
+    let m = parseInt(hms[1], 10);
+    let s = parseInt(hms[2], 10);
+    
+    if (parts.length > 1) {
+        let ampm = parts[1].toLowerCase();
+        if (ampm === 'pm' && h !== 12) h += 12;
+        if (ampm === 'am' && h === 12) h = 0;
+    }
+    return (h * 3600) + (m * 60) + s;
+}
 
+function toTime(totalSec) {
+    let h = Math.floor(totalSec / 3600);
+    let m = Math.floor((totalSec % 3600) / 60);
+    let s = totalSec % 60;
+    
+    let mStr = m < 10 ? '0' + m : m;
+    let sStr = s < 10 ? '0' + s : s;
+    return h + ":" + mStr + ":" + sStr;
+}
 // ============================================================
 // Function 1: getShiftDuration(startTime, endTime)
 // startTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
@@ -7,7 +30,12 @@ const fs = require("fs");
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getShiftDuration(startTime, endTime) {
-    // TODO: Implement this function
+    let start = toSec(startTime);
+    let end = toSec(endTime);
+    
+    if (end < start) end += 24 * 3600;
+    
+    return toTime(end - start);
 }
 
 // ============================================================
@@ -17,7 +45,23 @@ function getShiftDuration(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getIdleTime(startTime, endTime) {
-    // TODO: Implement this function
+    let start = toSec(startTime);
+    let end = toSec(endTime);
+    if (end < start) end += 24 * 3600;
+
+    let delStart = toSec("8:00:00 am");
+    let delEnd = toSec("10:00:00 pm");
+    let idle = 0;
+
+    if (start < delStart) {
+        let limit = end < delStart ? end : delStart;
+        idle += limit - start;
+    }
+    if (end > delEnd) {
+        let limit = start > delEnd ? start : delEnd;
+        idle += end - limit;
+    }
+    return toTime(idle);
 }
 
 // ============================================================
@@ -27,7 +71,10 @@ function getIdleTime(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getActiveTime(shiftDuration, idleTime) {
-    // TODO: Implement this function
+    let shiftSec = toSec(shiftDuration);
+    let idleSec = toSec(idleTime);
+    
+    return toTime(shiftSec - idleSec);
 }
 
 // ============================================================
@@ -37,7 +84,18 @@ function getActiveTime(shiftDuration, idleTime) {
 // Returns: boolean
 // ============================================================
 function metQuota(date, activeTime) {
-    // TODO: Implement this function
+    let activeSec = toSec(activeTime);
+    let quotaSec = toSec("8:24:00"); 
+
+    let d = new Date(date);
+    let eidStart = new Date("2025-04-10");
+    let eidEnd = new Date("2025-04-30");
+
+    if (d >= eidStart && d <= eidEnd) {
+        quotaSec = toSec("6:00:00"); 
+    }
+    
+    return activeSec >= quotaSec;
 }
 
 // ============================================================
@@ -108,6 +166,7 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
 function getNetPay(driverID, actualHours, requiredHours, rateFile) {
     // TODO: Implement this function
 }
+
 
 module.exports = {
     getShiftDuration,
