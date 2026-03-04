@@ -147,8 +147,6 @@ function metQuota(date, activeTime) {
 function addShiftRecord(textFile, shiftObj) {
     let fileContent = fs.readFileSync(textFile, "utf-8");
     let rows = fileContent.split("\n");
-
-    // skip empty rows in duplicate check
     for (let row of rows) {
         if (row == "") continue;
         let col = row.split(",");
@@ -194,6 +192,7 @@ function addShiftRecord(textFile, shiftObj) {
         hasBonus: false
     };
 }
+
 // ============================================================
 // Function 6: setBonus(textFile, driverID, date, newValue)
 // textFile: (typeof string) path to shifts text file
@@ -217,13 +216,53 @@ function setBonus(textFile, driverID, date, newValue) {
     fs.writeFileSync(textFile, rows.join("\n"), "utf-8");
 }
 
-function countBonusPerMonth(textFile, driverID, month) {}
+// ============================================================
+// Function 7: countBonusPerMonth(textFile, driverID, month)
+// textFile: (typeof string) path to shifts text file
+// driverID: (typeof string)
+// month: (typeof string) formatted as mm or m
+// Returns: number (-1 if driverID not found)
+// ============================================================
+function countBonusPerMonth(textFile, driverID, month) {
+    // TODO: Implement this function
+}
 
-function getTotalActiveHoursPerMonth(textFile, driverID, month) {}
+// ============================================================
+// Function 8: getTotalActiveHoursPerMonth(textFile, driverID, month)
+// textFile: (typeof string) path to shifts text file
+// driverID: (typeof string)
+// month: (typeof number)
+// Returns: string formatted as hhh:mm:ss
+// ============================================================
+function getTotalActiveHoursPerMonth(textFile, driverID, month) {
+    // TODO: Implement this function
+}
 
-function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {}
+// ============================================================
+// Function 9: getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month)
+// textFile: (typeof string) path to shifts text file
+// rateFile: (typeof string) path to driver rates text file
+// bonusCount: (typeof number) total bonuses for given driver per month
+// driverID: (typeof string)
+// month: (typeof number)
+// Returns: string formatted as hhh:mm:ss
+// ============================================================
+function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {
+    // TODO: Implement this function
+}
 
-function getNetPay(driverID, actualHours, requiredHours, rateFile) {}
+// ============================================================
+// Function 10: getNetPay(driverID, actualHours, requiredHours, rateFile)
+// driverID: (typeof string)
+// actualHours: (typeof string) formatted as hhh:mm:ss
+// requiredHours: (typeof string) formatted as hhh:mm:ss
+// rateFile: (typeof string) path to driver rates text file
+// Returns: integer (net pay)
+// ============================================================
+function getNetPay(driverID, actualHours, requiredHours, rateFile) {
+    // TODO: Implement this function
+}
+
 
 module.exports = {
     getShiftDuration,
