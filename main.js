@@ -1,27 +1,52 @@
 const fs = require("fs");
 function toSec(timeStr) {
-    let parts = timeStr.trim().split(' ');
-    let hms = parts[0].split(':');
-    let h = parseInt(hms[0], 10);
-    let m = parseInt(hms[1], 10);
-    let s = parseInt(hms[2], 10);
+    let spaceSplit = timeStr.split(" ");
+    let timePart = spaceSplit[0];
     
-    if (parts.length > 1) {
-        let ampm = parts[1].toLowerCase();
-        if (ampm === 'pm' && h !== 12) h += 12;
-        if (ampm === 'am' && h === 12) h = 0;
+    let timeArray = timePart.split(":");
+    let hours = parseInt(timeArray[0]);
+    let minutes = parseInt(timeArray[1]);
+    let seconds = parseInt(timeArray[2]);
+    
+    if (spaceSplit.length == 2) {
+        let amOrPm = spaceSplit[1];
+        
+        if (amOrPm == "pm") {
+            if (hours != 12) {
+                hours = hours + 12;
+            }
+        }
+        
+        if (amOrPm == "am") {
+            if (hours == 12) {
+                hours = 0;
+            }
+        }
     }
-    return (h * 3600) + (m * 60) + s;
+    
+    let totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+    return totalSeconds;
 }
 
 function toTime(totalSec) {
-    let h = Math.floor(totalSec / 3600);
-    let m = Math.floor((totalSec % 3600) / 60);
-    let s = totalSec % 60;
+    let hours = Math.floor(totalSec / 3600);
     
-    let mStr = m < 10 ? '0' + m : m;
-    let sStr = s < 10 ? '0' + s : s;
-    return h + ":" + mStr + ":" + sStr;
+    let remaining = totalSec % 3600;
+    let minutes = Math.floor(remaining / 60);
+    let seconds = remaining % 60;
+    
+    let minString = minutes.toString();
+    let secString = seconds.toString();
+    
+    if (minutes < 10) {
+        minString = "0" + minString;
+    }
+    
+    if (seconds < 10) {
+        secString = "0" + secString;
+    }
+    
+    return hours + ":" + minString + ":" + secString;
 }
 // ============================================================
 // Function 1: getShiftDuration(startTime, endTime)
@@ -47,20 +72,35 @@ function getShiftDuration(startTime, endTime) {
 function getIdleTime(startTime, endTime) {
     let start = toSec(startTime);
     let end = toSec(endTime);
-    if (end < start) end += 24 * 3600;
+    
+    if (end < start) {
+        end = end + (24 * 3600);
+    }
 
     let delStart = toSec("8:00:00 am");
     let delEnd = toSec("10:00:00 pm");
     let idle = 0;
 
     if (start < delStart) {
-        let limit = end < delStart ? end : delStart;
-        idle += limit - start;
+        let limit;
+        if (end < delStart) {
+            limit = end;
+        } else {
+            limit = delStart;
+        }
+        idle = idle + (limit - start);
     }
+    
     if (end > delEnd) {
-        let limit = start > delEnd ? start : delEnd;
-        idle += end - limit;
+        let limit;
+        if (start > delEnd) {
+            limit = start;
+        } else {
+            limit = delEnd;
+        }
+        idle = idle + (end - limit);
     }
+    
     return toTime(idle);
 }
 
@@ -105,9 +145,55 @@ function metQuota(date, activeTime) {
 // Returns: object with 10 properties or empty object {}
 // ============================================================
 function addShiftRecord(textFile, shiftObj) {
-    // TODO: Implement this function
-}
+    let fileContent = fs.readFileSync(textFile, "utf-8");
+    let rows = fileContent.split("\n");
 
+    // skip empty rows in duplicate check
+    for (let row of rows) {
+        if (row == "") continue;
+        let col = row.split(",");
+        if (col[0] == shiftObj.driverID && col[2] == shiftObj.date) {
+            return {};
+        }
+    }
+
+    let shiftDuration = getShiftDuration(shiftObj.startTime, shiftObj.endTime);
+    let idleTime = getIdleTime(shiftObj.startTime, shiftObj.endTime);
+    let activeTime = getActiveTime(shiftDuration, idleTime);
+    let quota = metQuota(shiftObj.date, activeTime);
+
+    let newRow = shiftObj.driverID + "," + shiftObj.driverName + "," + shiftObj.date + "," + shiftObj.startTime + "," + shiftObj.endTime + "," + shiftDuration + "," + idleTime + "," + activeTime + "," + quota + "," + false;
+
+    let lastIndex = -1;
+    for (let i = 0; i < rows.length; i++) {
+        if (rows[i] == "") continue;
+        let col = rows[i].split(",");
+        if (col[0] == shiftObj.driverID) {
+            lastIndex = i;
+        }
+    }
+
+    if (lastIndex == -1) {
+        rows.push(newRow);
+    } else {
+        rows.splice(lastIndex + 1, 0, newRow);
+    }
+
+    fs.writeFileSync(textFile, rows.join("\n"), "utf-8");
+
+    return {
+        driverID: shiftObj.driverID,
+        driverName: shiftObj.driverName,
+        date: shiftObj.date,
+        startTime: shiftObj.startTime,
+        endTime: shiftObj.endTime,
+        shiftDuration: shiftDuration,
+        idleTime: idleTime,
+        activeTime: activeTime,
+        metQuota: quota,
+        hasBonus: false
+    };
+}
 // ============================================================
 // Function 6: setBonus(textFile, driverID, date, newValue)
 // textFile: (typeof string) path to shifts text file
@@ -117,56 +203,27 @@ function addShiftRecord(textFile, shiftObj) {
 // Returns: nothing (void)
 // ============================================================
 function setBonus(textFile, driverID, date, newValue) {
-    // TODO: Implement this function
+    let fileContent = fs.readFileSync(textFile, "utf-8");
+    let rows = fileContent.split("\n");
+
+    for (let i = 0; i < rows.length; i++) {
+        let col = rows[i].split(",");
+        if (col[0] == driverID && col[2] == date) {
+            col[9] = newValue.toString();
+            rows[i] = col.join(",");
+        }
+    }
+
+    fs.writeFileSync(textFile, rows.join("\n"), "utf-8");
 }
 
-// ============================================================
-// Function 7: countBonusPerMonth(textFile, driverID, month)
-// textFile: (typeof string) path to shifts text file
-// driverID: (typeof string)
-// month: (typeof string) formatted as mm or m
-// Returns: number (-1 if driverID not found)
-// ============================================================
-function countBonusPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
-}
+function countBonusPerMonth(textFile, driverID, month) {}
 
-// ============================================================
-// Function 8: getTotalActiveHoursPerMonth(textFile, driverID, month)
-// textFile: (typeof string) path to shifts text file
-// driverID: (typeof string)
-// month: (typeof number)
-// Returns: string formatted as hhh:mm:ss
-// ============================================================
-function getTotalActiveHoursPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
-}
+function getTotalActiveHoursPerMonth(textFile, driverID, month) {}
 
-// ============================================================
-// Function 9: getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month)
-// textFile: (typeof string) path to shifts text file
-// rateFile: (typeof string) path to driver rates text file
-// bonusCount: (typeof number) total bonuses for given driver per month
-// driverID: (typeof string)
-// month: (typeof number)
-// Returns: string formatted as hhh:mm:ss
-// ============================================================
-function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {
-    // TODO: Implement this function
-}
+function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {}
 
-// ============================================================
-// Function 10: getNetPay(driverID, actualHours, requiredHours, rateFile)
-// driverID: (typeof string)
-// actualHours: (typeof string) formatted as hhh:mm:ss
-// requiredHours: (typeof string) formatted as hhh:mm:ss
-// rateFile: (typeof string) path to driver rates text file
-// Returns: integer (net pay)
-// ============================================================
-function getNetPay(driverID, actualHours, requiredHours, rateFile) {
-    // TODO: Implement this function
-}
-
+function getNetPay(driverID, actualHours, requiredHours, rateFile) {}
 
 module.exports = {
     getShiftDuration,
