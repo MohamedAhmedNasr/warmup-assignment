@@ -224,7 +224,26 @@ function setBonus(textFile, driverID, date, newValue) {
 // Returns: number (-1 if driverID not found)
 // ============================================================
 function countBonusPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
+    let fileContent = fs.readFileSync(textFile, "utf-8");
+    let rows = fileContent.split("\n");
+
+    let driverFound = false;
+    let bonusCount = 0;
+
+    for (let row of rows) {
+        if (row == "") continue;
+        let col = row.split(",");
+        if (col[0] == driverID) {
+            driverFound = true;
+            let rowMonth = parseInt(col[2].split("-")[1]);
+            if (rowMonth == parseInt(month) && col[9].trim() == "true") {
+                bonusCount++;
+            }
+        }
+    }
+
+    if (driverFound == false) return -1;
+    return bonusCount;
 }
 
 // ============================================================
@@ -235,9 +254,24 @@ function countBonusPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getTotalActiveHoursPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
-}
+    let fileContent = fs.readFileSync(textFile, "utf-8");
+    let rows = fileContent.split("\n");
 
+    let totalSec = 0;
+
+    for (let row of rows) {
+        if (row == "") continue;
+        let col = row.split(",");
+        if (col[0] == driverID) {
+            let rowMonth = parseInt(col[2].split("-")[1]);
+            if (rowMonth == month) {
+                totalSec = totalSec + toSec(col[7]);
+            }
+        }
+    }
+
+    return toTime(totalSec);
+}
 // ============================================================
 // Function 9: getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month)
 // textFile: (typeof string) path to shifts text file
@@ -249,6 +283,7 @@ function getTotalActiveHoursPerMonth(textFile, driverID, month) {
 // ============================================================
 function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {
     // TODO: Implement this function
+    return
 }
 
 // ============================================================
@@ -261,6 +296,7 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
 // ============================================================
 function getNetPay(driverID, actualHours, requiredHours, rateFile) {
     // TODO: Implement this function
+    return
 }
 
 
