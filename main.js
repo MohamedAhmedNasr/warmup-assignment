@@ -282,8 +282,50 @@ function getTotalActiveHoursPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {
-    // TODO: Implement this function
-    return
+    let rateContent = fs.readFileSync(rateFile, "utf-8");
+    let rateRows = rateContent.split("\n");
+
+    let driverDayOff = "";
+    for (let row of rateRows) {
+        if (row == "") continue;
+        let col = row.split(",");
+        if (col[0] == driverID) {
+            driverDayOff = col[1].trim();
+        }
+    }
+
+    let fileContent = fs.readFileSync(textFile, "utf-8");
+    let rows = fileContent.split("\n");
+
+    let dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    let eidStart = new Date("2025-04-10");
+    let eidEnd = new Date("2025-04-30");
+
+    let totalRequiredSec = 0;
+
+    for (let row of rows) {
+        if (row == "") continue;
+        let col = row.split(",");
+        if (col[0] == driverID) {
+            let rowMonth = parseInt(col[2].split("-")[1]);
+            if (rowMonth == month) {
+                let d = new Date(col[2]);
+                let dayName = dayNames[d.getDay()];
+                if (dayName == driverDayOff) continue;
+                if (d >= eidStart && d <= eidEnd) {
+                    totalRequiredSec = totalRequiredSec + toSec("6:00:00");
+                } else {
+                    totalRequiredSec = totalRequiredSec + toSec("8:24:00");
+                }
+            }
+        }
+    }
+
+    let bonusDeduction = bonusCount * toSec("2:00:00");
+    totalRequiredSec = totalRequiredSec - bonusDeduction;
+    if (totalRequiredSec < 0) totalRequiredSec = 0;
+
+    return toTime(totalRequiredSec);
 }
 
 // ============================================================
@@ -295,9 +337,45 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
 // Returns: integer (net pay)
 // ============================================================
 function getNetPay(driverID, actualHours, requiredHours, rateFile) {
-    // TODO: Implement this function
-    return
+    let rateContent = fs.readFileSync(rateFile, "utf-8");
+    let rateRows = rateContent.split("\n");
+
+    let basePay = 0;
+    let tier = 0;
+
+    for (let row of rateRows) {
+        if (row == "") continue;
+        let col = row.split(",");
+        if (col[0] == driverID) {
+            basePay = parseInt(col[2]);
+            tier = parseInt(col[3]);
+        }
+    }
+
+    let actualSec = toSec(actualHours);
+    let requiredSec = toSec(requiredHours);
+
+    if (actualSec >= requiredSec) return basePay;
+
+    let missingSec = requiredSec - actualSec;
+    let missingHours = Math.floor(missingSec / 3600);
+
+    let allowedMissing = 0;
+    if (tier == 1) allowedMissing = 50;
+    if (tier == 2) allowedMissing = 20;
+    if (tier == 3) allowedMissing = 10;
+    if (tier == 4) allowedMissing = 3;
+
+    let billableMissingHours = missingHours - allowedMissing;
+
+    if (billableMissingHours <= 0) return basePay;
+
+    let deductionRatePerHour = Math.floor(basePay / 185);
+    let salaryDeduction = billableMissingHours * deductionRatePerHour;
+
+    return basePay - salaryDeduction;
 }
+
 
 
 module.exports = {
